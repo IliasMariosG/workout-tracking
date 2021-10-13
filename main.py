@@ -2,6 +2,7 @@ import os
 import requests
 from constants import URL_NUTRITIONIX, QUESTION
 from config import LOAD_DOTENV
+import datetime
 
 def get_headers():
   return {
@@ -23,4 +24,20 @@ def get_params_nutrition():
 res = requests.post(url=URL_NUTRITIONIX, json=get_params_nutrition(), headers=get_headers())
 res.raise_for_status()
 res_from_nutrix = res.json()
-print(res_from_nutrix)
+
+# Save data into google sheet
+day_month_year_string = datetime.datetime.now().strftime("%d/%m/%Y")
+hour_minutes_seconds_microseconds_string = datetime.datetime.now().strftime("%H:%M:%S")
+
+for exercise in res_from_nutrix["exercises"]:
+  params_sheety = {
+      "workout" : {
+        "date" : day_month_year_string,
+        "time": hour_minutes_seconds_microseconds_string,
+        "exercise" : exercise["name"].title(),
+        "duration": exercise["duration_min"],
+        "calories" : exercise["nf_calories"]
+      } 
+    }
+sheet_response = requests.post(os.environ.get("URL_SHEETY"), json=params_sheety, auth=(os.environ.get("SHEETY_USERNAME"), os.environ.get("SHEETY_PASSWORD")))
+print(sheet_response.text)
